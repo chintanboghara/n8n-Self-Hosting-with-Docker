@@ -119,8 +119,6 @@ docker compose up -d
 
 ## Helper Shell Scripts
 
-To make common operations easier, you can use the provided shell scripts:
-
 1. **Download or copy** each of the following into your project directory:
 
    * `start-n8n-sqlite.sh`

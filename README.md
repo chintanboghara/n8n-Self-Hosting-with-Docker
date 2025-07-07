@@ -116,3 +116,54 @@ docker compose pull
 docker compose down
 docker compose up -d
 ```
+
+## Helper Shell Scripts
+
+To make common operations easier, you can use the provided shell scripts:
+
+1. **Download or copy** each of the following into your project directory:
+
+   * `start-n8n-sqlite.sh`
+   * `start-n8n-postgres.sh`
+   * `start-n8n-with-timezone.sh`
+   * `update-n8n-cli.sh`
+   * `update-n8n-compose.sh`
+
+2. **Make them executable**:
+
+   ```bash
+   chmod +x start-n8n-*.sh update-n8n-*.sh
+   ```
+
+3. **Edit configuration**:
+
+   * For the PostgreSQL script (`start-n8n-postgres.sh`), fill in your database host, port, name, user, password, and schema at the top of the script.
+   * For the Compose update script (`update-n8n-compose.sh`), set `COMPOSE_DIR` to the path where your `docker-compose.yml` lives.
+
+4. **Run the scripts**:
+
+   * **Quick start with SQLite**:
+
+     ```bash
+     ./start-n8n-sqlite.sh
+     ```
+   * **Start with PostgreSQL**:
+
+     ```bash
+     ./start-n8n-postgres.sh
+     ```
+   * **Start with custom timezone**:
+
+     ```bash
+     ./start-n8n-with-timezone.sh
+     ```
+   * **Update via Docker CLI**:
+
+     ```bash
+     ./update-n8n-cli.sh
+     ```
+   * **Update via Docker Compose**:
+
+     ```bash
+     ./update-n8n-compose.sh
+     ```

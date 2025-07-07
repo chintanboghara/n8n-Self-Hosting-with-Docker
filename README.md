@@ -1,21 +1,26 @@
 # n8n Self-Hosting with Docker
 
-Installing and running [n8n](https://n8n.io/) in Docker, with optional PostgreSQL integration, timezone configuration, and update procedures.
+This guide explains how to install and run [n8n](https://n8n.io/) using Docker, with options for SQLite or PostgreSQL databases, timezone configuration, local development, updates, and production deployment.
 
 ## Prerequisites
 
-- **Docker Desktop** (macOS / Windows) or  
-- **Docker Engine** + **Docker Compose** (Linux)  
+- **Docker Desktop** (for macOS or Windows) **OR**  
+- **Docker Engine** and **Docker Compose** (for Linux)  
+
+**Before you begin**: Ensure Docker is installed and running. For Docker Desktop users, confirm it’s started in the system tray or dock.
 
 ## Quick Start (SQLite)
 
+Get n8n up and running quickly with the default SQLite database—perfect for testing or small-scale use.
+
 1. **Create a Docker volume**  
+   This persists your n8n data (e.g., workflows, credentials) outside the container.  
    ```bash
    docker volume create n8n_data
-   ````
+   ```
 
-2. **Run n8n container**
-
+2. **Run the n8n container**  
+   This command runs n8n interactively and removes the container when stopped.  
    ```bash
    docker run -it --rm \
      --name n8n \
@@ -23,47 +28,60 @@ Installing and running [n8n](https://n8n.io/) in Docker, with optional PostgreSQ
      -v n8n_data:/home/node/.n8n \
      docker.n8n.io/n8nio/n8n
    ```
-   
-3. **Access UI**
-   Open your browser at:
 
+3. **Access the n8n UI**  
+   Open your browser and go to:  
    ```
    http://localhost:5678
-   ```
+   ```  
+   **Tip**: If port 5678 is in use, modify the port mapping (e.g., `-p 8080:5678`) and access it at `http://localhost:8080`.
 
-This uses the built-in SQLite database and persists all data (including your encryption key and workflows) in the `n8n_data` volume.
+> **Note**: The `-it --rm` flags are great for testing (interactive mode with auto-cleanup). For long-running setups, replace them with `-d` to run in detached mode.
 
 ## Using PostgreSQL
 
-By default, n8n uses SQLite. To switch to PostgreSQL:
+For better scalability and performance, switch to PostgreSQL instead of SQLite. You’ll need a running PostgreSQL instance.
 
-1. **Create the persistent volume**
-
+1. **Create the persistent volume**  
+   This is still required to store the encryption key, even with PostgreSQL.  
    ```bash
    docker volume create n8n_data
    ```
-2. **Run with PostgreSQL env vars**
 
+2. **Run n8n with PostgreSQL environment variables**  
+   Replace the placeholders with your PostgreSQL details (e.g., host, database name, etc.).  
    ```bash
    docker run -it --rm \
      --name n8n \
      -p 5678:5678 \
      -e DB_TYPE=postgresdb \
-     -e DB_POSTGRESDB_DATABASE=<POSTGRES_DATABASE> \
      -e DB_POSTGRESDB_HOST=<POSTGRES_HOST> \
      -e DB_POSTGRESDB_PORT=<POSTGRES_PORT> \
+     -e DB_POSTGRESDB_DATABASE=<POSTGRES_DATABASE> \
      -e DB_POSTGRESDB_USER=<POSTGRES_USER> \
      -e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
      -v n8n_data:/home/node/.n8n \
      docker.n8n.io/n8nio/n8n
+   ```  
+   **Example**:  
+   ```bash
+   -e DB_POSTGRESDB_HOST=localhost \
+   -e DB_POSTGRESDB_PORT=5432 \
+   -e DB_POSTGRESDB_DATABASE=n8n_db \
+   -e DB_POSTGRESDB_USER=n8n_user \
+   -e DB_POSTGRESDB_PASSWORD=securepassword
    ```
 
-> **Important**: Always persist the `/home/node/.n8n` folder to retain the credentials’ encryption key. If lost, previously saved credentials become inaccessible.
+> **Critical**: Persist the `/home/node/.n8n` folder! It stores the encryption key for credentials. Losing it means previously saved credentials can’t be decrypted.
 
 ## Timezone Configuration
 
-Define the timezone for scheduling nodes and system scripts:
+Set the timezone to ensure accurate scheduling and timestamps in n8n.
 
+- **`GENERIC_TIMEZONE`**: Used by schedule triggers and timestamps.  
+- **`TZ`**: Sets the system timezone for commands like `date`.
+
+**Example** (using "Europe/Berlin"):  
 ```bash
 docker run -it --rm \
   --name n8n \
@@ -74,21 +92,19 @@ docker run -it --rm \
   docker.n8n.io/n8nio/n8n
 ```
 
-* `GENERIC_TIMEZONE`: Used by schedule triggers, auto-timestamps, etc.
-* `TZ`: System timezone for commands like `date`.
+> **Resource**: See the [TZ database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for valid timezone names.
 
 ## Local Development: n8n with Tunnel
 
-To allow external services (e.g., GitHub webhooks) to reach local n8n, run n8n in tunnel mode. n8n’s tunnel service will forward public requests to the local instance.
+Use n8n’s tunnel feature to expose your local instance to external services (e.g., for testing webhooks).
 
-1. **Create the Docker volume** (haven’t already)
-
+1. **Create the Docker volume** (if not already done)  
    ```bash
    docker volume create n8n_data
    ```
 
-2. **Start n8n with tunnel**
-
+2. **Start n8n with the tunnel**  
+   The `--tunnel` flag creates a public URL for your local instance.  
    ```bash
    docker run -it --rm \
      --name n8n \
@@ -98,100 +114,108 @@ To allow external services (e.g., GitHub webhooks) to reach local n8n, run n8n i
      start --tunnel
    ```
 
-3. **Copy the public tunnel URL** from the container logs and configure the external service’s webhook endpoint to use it.
+3. **Copy the public tunnel URL**  
+   Look in the container logs for a URL like `https://<random-string>.loca.lt`. Use this for external webhook configurations.
+
+> **Note**: The tunnel URL changes each time you restart with `--tunnel`. Check the logs if you don’t see it immediately.
 
 ## Updating n8n
 
 ### Using Docker CLI
 
-1. **Pull latest image**
+1. **Pull the latest image**  
+   - Stable version:  
+     ```bash
+     docker pull docker.n8n.io/n8nio/n8n
+     ```  
+   - Specific version (e.g., 1.81.0):  
+     ```bash
+     docker pull docker.n8n.io/n8nio/n8n:1.81.0
+     ```  
+   - Beta ("next") version:  
+     ```bash
+     docker pull docker.n8n.io/n8nio/n8n:next
+     ```
 
-   ```bash
-   # Stable
-   docker pull docker.n8n.io/n8nio/n8n
-   # Specific version
-   docker pull docker.n8n.io/n8nio/n8n:1.81.0
-   # Beta (“next”)
-   docker pull docker.n8n.io/n8nio/n8n:next
-   ```
-   
-2. **Restart container**
+2. **Restart the container**  
+   - Find the container ID:  
+     ```bash
+     docker ps -a
+     ```  
+   - Stop and remove the old container:  
+     ```bash
+     docker stop <container_id>
+     docker rm <container_id>
+     ```  
+   - Restart with your original options (e.g., volumes, ports):  
+     ```bash
+     docker run --name n8n [your options] -d docker.n8n.io/n8nio/n8n
+     ```
 
-   ```bash
-   docker ps -a                 # find CONTAINER ID
-   docker stop <container_id>
-   docker rm   <container_id>
-   # restart with your previous run options:
-   docker run --name n8n [options] -d docker.n8n.io/n8nio/n8n
-   ```
+> **Tip**: Check your current version with `docker exec -it n8n n8n --version` before updating.
 
 ### Using Docker Desktop (GUI)
 
-* Go to **Images** → Right-click on `docker.n8n.io/n8nio/n8n` → **Pull**.
+- Open Docker Desktop, go to **Images**, right-click `docker.n8n.io/n8nio/n8n`, and select **Pull** to update.
 
 ## Updating with Docker Compose
 
-If you deployed via `docker-compose.yml`:
-
+For deployments using `docker-compose.yml`:  
 ```bash
-# In your compose directory
+# Navigate to your compose directory
 docker compose pull
 docker compose down
 docker compose up -d
 ```
 
+> **Best Practice**: Back up your database before updating to avoid potential data loss.
+
 ## Helper Shell Scripts
 
-1. **Download or copy** each of the following into your project directory:
+Simplify tasks with these shell scripts. Download or create them in your project directory:
 
-   * `start-n8n-sqlite.sh`
-   * `start-n8n-postgres.sh`
-   * `start-n8n-with-timezone.sh`
-   * `update-n8n-cli.sh`
-   * `update-n8n-compose.sh`
+- `start-n8n-sqlite.sh`  
+- `start-n8n-postgres.sh`  
+- `start-n8n-with-timezone.sh`  
+- `update-n8n-cli.sh`  
+- `update-n8n-compose.sh`
 
-2. **Make them executable**:
-
+1. **Make them executable** (one-time step):  
    ```bash
    chmod +x start-n8n-*.sh update-n8n-*.sh
    ```
 
-3. **Edit configuration**:
+2. **Edit configurations** (if needed):  
+   - For `start-n8n-postgres.sh`, update the database details at the top of the script.  
+   - For `update-n8n-compose.sh`, set `COMPOSE_DIR` to your `docker-compose.yml` location.
 
-   * For the PostgreSQL script (`start-n8n-postgres.sh`), fill in your database host, port, name, user, password, and schema at the top of the script.
-   * For the Compose update script (`update-n8n-compose.sh`), set `COMPOSE_DIR` to the path where your `docker-compose.yml` lives.
-
-4. **Run the scripts**:
-
-   * **Quick start with SQLite**:
-
+3. **Run the scripts**:  
+   - Quick start with SQLite:  
      ```bash
      ./start-n8n-sqlite.sh
-     ```
-   * **Start with PostgreSQL**:
-
+     ```  
+   - Start with PostgreSQL:  
      ```bash
      ./start-n8n-postgres.sh
-     ```
-   * **Start with custom timezone**:
-
+     ```  
+   - Start with custom timezone:  
      ```bash
      ./start-n8n-with-timezone.sh
-     ```
-   * **Update via Docker CLI**:
-
+     ```  
+   - Update via Docker CLI:  
      ```bash
      ./update-n8n-cli.sh
-     ```
-   * **Update via Docker Compose**:
-
+     ```  
+   - Update via Docker Compose:  
      ```bash
      ./update-n8n-compose.sh
      ```
 
+> **Suggestion**: Store scripts in a `scripts/` subdirectory for better organization.
+
 ## Production Deployment with Docker Compose
 
-`docker-compose.prod.yml` for a production‑grade setup.
+Use the `docker-compose.prod.yml` file below for a production-ready setup with n8n, PostgreSQL, Redis (for queueing), and Traefik (for SSL and reverse proxy).
 
 ```yaml
 version: "3.8"
@@ -265,32 +289,22 @@ volumes:
 
 ### Bringing up Production
 
-```bash
-docker-compose -f docker-compose.prod.yml pull
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-1. **Pull images**:
-
+1. **Pull the latest images**  
    ```bash
    docker-compose -f docker-compose.prod.yml pull
    ```
-2. **Start services** in detached mode:
 
+2. **Start services in detached mode**  
    ```bash
    docker-compose -f docker-compose.prod.yml up -d
    ```
-3. **Verify**
 
-   * Check health:
-
+3. **Verify the deployment**  
+   - Check container status:  
      ```bash
      docker ps
      docker-compose -f docker-compose.prod.yml ps
-     ```
-   * Visit `https://n8n.example.com` (or your hostname) to confirm the UI is up.
+     ```  
+   - Visit `https://n8n.example.com` (replace with your domain) to confirm the UI is running.
 
-
-
-
-
+> **Important**: Before deploying, update the Traefik labels with your domain (e.g., `n8n.yourdomain.com`) and email for SSL certificates. Ensure your domain points to your server.

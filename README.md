@@ -77,6 +77,29 @@ docker run -it --rm \
 * `GENERIC_TIMEZONE`: Used by schedule triggers, auto-timestamps, etc.
 * `TZ`: System timezone for commands like `date`.
 
+## Local Development: n8n with Tunnel
+
+To allow external services (e.g., GitHub webhooks) to reach local n8n, run n8n in tunnel mode. n8n’s tunnel service will forward public requests to the local instance.
+
+1. **Create the Docker volume** (haven’t already)
+
+   ```bash
+   docker volume create n8n_data
+   ```
+
+2. **Start n8n with tunnel**
+
+   ```bash
+   docker run -it --rm \
+     --name n8n \
+     -p 5678:5678 \
+     -v n8n_data:/home/node/.n8n \
+     docker.n8n.io/n8nio/n8n \
+     start --tunnel
+   ```
+
+3. **Copy the public tunnel URL** from the container logs and configure the external service’s webhook endpoint to use it.
+
 ## Updating n8n
 
 ### Using Docker CLI
@@ -266,3 +289,8 @@ docker-compose -f docker-compose.prod.yml up -d
      docker-compose -f docker-compose.prod.yml ps
      ```
    * Visit `https://n8n.example.com` (or your hostname) to confirm the UI is up.
+
+
+
+
+

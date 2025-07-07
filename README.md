@@ -165,3 +165,104 @@ docker compose up -d
      ```bash
      ./update-n8n-compose.sh
      ```
+
+## Production Deployment with Docker Compose
+
+`docker-compose.prod.yml` for a production‑grade setup.
+
+```yaml
+version: "3.8"
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=supersecret
+      - GENERIC_TIMEZONE=UTC
+      - TZ=UTC
+      - EXECUTIONS_PROCESS=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - METRICS_ENABLED=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.http.routers.n8n.rule=Host(`n8n.example.com`)"
+      - "traefik.http.routers.n8n.tls=true"
+      - "traefik.http.routers.n8n.tls.certresolver=le"
+
+  redis:
+    image: redis:6-alpine
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=supersecret
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  proxy:
+    image: traefik:latest
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=you@example.com"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+
+volumes:
+  n8n_data:
+  pg_data:
+  traefik_letsencrypt:
+```
+
+### Bringing up Production
+
+```bash
+docker-compose -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+1. **Pull images**:
+
+   ```bash
+   docker-compose -f docker-compose.prod.yml pull
+   ```
+2. **Start services** in detached mode:
+
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+3. **Verify**
+
+   * Check health:
+
+     ```bash
+     docker ps
+     docker-compose -f docker-compose.prod.yml ps
+     ```
+   * Visit `https://n8n.example.com` (or your hostname) to confirm the UI is up.

@@ -211,8 +211,6 @@ Simplify tasks with these shell scripts. Download or create them in your project
      ./update-n8n-compose.sh
      ```
 
-> **Suggestion**: Store scripts in a `scripts/` subdirectory for better organization.
-
 ## Production Deployment with Docker Compose
 
 Use the `docker-compose.prod.yml` file below for a production-ready setup with n8n, PostgreSQL, Redis (for queueing), and Traefik (for SSL and reverse proxy).
